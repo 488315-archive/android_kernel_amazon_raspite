@@ -36,7 +36,7 @@ void arch_set_freq_scale(struct cpumask *cpus, unsigned long cur_freq,
 
 	trace_android_vh_arch_set_freq_scale(cpus, cur_freq, max_freq, &scale);
 
-	for_each_cpu(i, cpus) {
+	for_each_cpu(i, cpus){
 		per_cpu(freq_scale, i) = scale;
 		per_cpu(max_cpu_freq, i) = max_freq;
 	}
@@ -76,7 +76,7 @@ static ssize_t cpu_capacity_show(struct device *dev,
 {
 	struct cpu *cpu = container_of(dev, struct cpu, dev);
 
-	return sprintf(buf, "%lu\n", topology_get_cpu_scale(cpu->dev.id));
+	return sysfs_emit(buf, "%lu\n", topology_get_cpu_scale(cpu->dev.id));
 }
 
 static void update_topology_flags_workfn(struct work_struct *work);

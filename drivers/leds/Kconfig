@@ -7,7 +7,7 @@ config LEDS_GPIO_REGISTER
 	  module.
 
 menuconfig NEW_LEDS
-	bool "LED Support"
+	tristate "LED Support"
 	help
 	  Say Y to enable Linux LED support.  This allows control of supported
 	  LEDs from both userspace and optionally, by kernel events (triggers).
@@ -215,6 +215,30 @@ config LEDS_MT6323
 	help
 	  This option enables support for on-chip LED drivers found on
 	  Mediatek MT6323 PMIC.
+
+config LEDS_MT6360
+	tristate "LED Support for Mediatek MT6360 PMIC"
+	depends on LEDS_CLASS_FLASH && OF
+	depends on V4L2_FLASH_LED_CLASS || !V4L2_FLASH_LED_CLASS
+	depends on MFD_MT6360
+	help
+	  This option enables support for dual Flash LED drivers found on
+	  Mediatek MT6360 PMIC.
+	  Support Torch and Strobe mode independently current source.
+	  Include Low-VF and short protection.
+
+config LEDS_MT6362
+	tristate "MT6362 SPMI LEDS driver"
+	depends on LEDS_CLASS_FLASH && OF
+	depends on V4L2_FLASH_LED_CLASS || !V4L2_FLASH_LED_CLASS
+	depends on MFD_MT6362
+	help
+	  Say yes here to have support for the MT6362 LEDS
+	  Provide strobe and torch mode with flashlight, and
+	  indicator and moonlight with rgbled.
+
+	  The driver can also be build as a module.
+	  If so, the module will be called leds_mt6362
 
 config LEDS_S3C24XX
 	tristate "LED Support for Samsung S3C24XX GPIO LEDs"
@@ -822,6 +846,23 @@ config LEDS_LM36274
 	help
 	  Say Y to enable the LM36274 LED driver for TI LMU devices.
 	  This supports the LED device LM36274.
+
+config LEDS_MP3318
+	tristate "LED Support for MPS MP3318 LED driver chip"
+	depends on LEDS_CLASS && I2C
+	help
+	  If you say yes here you get support for MPS MP3318 LED driver.
+	  It's controlled by i2c.
+
+config LEDS_REGULATOR_VIBRATOR
+	tristate "LED regulator vibrator support"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for LED regulator vibrator.
+	  say 'y' to enable this
+
+	  To compile this driver as a module, choose 'M' here: the module
+	  will be called regulator-vibrator.
 
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"

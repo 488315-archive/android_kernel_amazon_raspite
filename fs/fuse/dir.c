@@ -304,16 +304,14 @@ static int fuse_dentry_delete(const struct dentry *dentry)
  * look up paths on its own. Instead, we handle the lookup as a special case
  * inside of the write request.
  */
-static void fuse_dentry_canonical_path(const struct path *path,
-				       struct path *canonical_path)
-{
+static void fuse_dentry_canonical_path(const struct path *path, struct path *canonical_path) {
 	struct inode *inode = d_inode(path->dentry);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	FUSE_ARGS(args);
 	char *path_name;
 	int err;
 
-	path_name = (char *)__get_free_page(GFP_KERNEL);
+	path_name = (char*)__get_free_page(GFP_KERNEL);
 	if (!path_name)
 		goto default_path;
 
@@ -528,7 +526,6 @@ static int fuse_create_open(struct inode *dir, struct dentry *entry,
 	ff->fh = outopen.fh;
 	ff->nodeid = outentry.nodeid;
 	ff->open_flags = outopen.open_flags;
-	fuse_passthrough_setup(fc, ff, &outopen);
 	inode = fuse_iget(dir->i_sb, outentry.nodeid, outentry.generation,
 			  &outentry.attr, entry_attr_timeout(&outentry), 0);
 	if (!inode) {

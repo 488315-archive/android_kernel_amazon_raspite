@@ -1217,18 +1217,6 @@ source "usr/Kconfig"
 
 endif
 
-config BOOT_CONFIG
-	bool "Boot config support"
-	depends on BLK_DEV_INITRD
-	help
-	  Extra boot config allows system admin to pass a config file as
-	  complemental extension of kernel cmdline when booting.
-	  The boot config file must be attached at the end of initramfs
-	  with checksum, size and magic word.
-	  See <file:Documentation/admin-guide/bootconfig.rst> for details.
-
-	  If unsure, say Y.
-
 choice
 	prompt "Compiler optimization level"
 	default CC_OPTIMIZE_FOR_PERFORMANCE
@@ -2252,6 +2240,15 @@ config ASN1
 	  that can be interpreted by the ASN.1 stream decoder and used to
 	  inform it as to what tags are to be expected in a stream and what
 	  functions to call on what tags.
+
+config ROOTFS_CHECK
+	bool "Mediatek Rootfs Secure Boot Check"
+	help
+	  Enable rootfs secure boot check on yocto system when rootfs mount.
+	  When enabled, the rootfs image would be signed while build and the
+	  signature would append the the end of the rootfs image, then verify
+	  the signature when mount.
+	  If enabled the rootfs would be readonly.
 
 source "kernel/Kconfig.locks"
 

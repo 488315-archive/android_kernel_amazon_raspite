@@ -18,6 +18,10 @@ source "drivers/gpu/host1x/Kconfig"
 source "drivers/gpu/ipu-v3/Kconfig"
 
 source "drivers/gpu/drm/Kconfig"
+source "drivers/gpu/mediatek/Kconfig"
+if (MTK_GPU_SUPPORT = n)
+source "drivers/gpu/arm/Kconfig"
+endif
 
 menu "Frame buffer Devices"
 source "drivers/video/fbdev/Kconfig"

@@ -25,6 +25,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <drm/drmP.h>
 #include <drm/drm_mipi_dsi.h>
 
 #include <linux/device.h>
@@ -1096,6 +1097,8 @@ static int mipi_dsi_drv_probe(struct device *dev)
 	struct mipi_dsi_driver *drv = to_mipi_dsi_driver(dev->driver);
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(dev);
 
+	DRM_DEBUG_DRIVER("start\n");
+
 	return drv->probe(dsi);
 }
 
@@ -1125,8 +1128,12 @@ static void mipi_dsi_drv_shutdown(struct device *dev)
 int mipi_dsi_driver_register_full(struct mipi_dsi_driver *drv,
 				  struct module *owner)
 {
+	int ret;
+
 	drv->driver.bus = &mipi_dsi_bus_type;
 	drv->driver.owner = owner;
+
+	pr_info("%s start\n", __func__);
 
 	if (drv->probe)
 		drv->driver.probe = mipi_dsi_drv_probe;
@@ -1135,7 +1142,9 @@ int mipi_dsi_driver_register_full(struct mipi_dsi_driver *drv,
 	if (drv->shutdown)
 		drv->driver.shutdown = mipi_dsi_drv_shutdown;
 
-	return driver_register(&drv->driver);
+	ret = driver_register(&drv->driver);
+
+	return ret;
 }
 EXPORT_SYMBOL(mipi_dsi_driver_register_full);
 
@@ -1153,10 +1162,19 @@ EXPORT_SYMBOL(mipi_dsi_driver_unregister);
 
 static int __init mipi_dsi_bus_init(void)
 {
-	return bus_register(&mipi_dsi_bus_type);
+	int ret;
+
+	DRM_DEBUG_DRIVER("start\n");
+
+	ret = bus_register(&mipi_dsi_bus_type);
+
+	DRM_DEBUG_DRIVER("ret %d\n", ret);
+
+	return ret;
 }
 postcore_initcall(mipi_dsi_bus_init);
 
 MODULE_AUTHOR("Andrzej Hajda <a.hajda@samsung.com>");
 MODULE_DESCRIPTION("MIPI DSI Bus");
 MODULE_LICENSE("GPL and additional rights");
+

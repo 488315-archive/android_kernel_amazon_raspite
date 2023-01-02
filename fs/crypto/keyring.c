@@ -213,11 +213,7 @@ static int allocate_filesystem_keyring(struct super_block *sb)
 	if (IS_ERR(keyring))
 		return PTR_ERR(keyring);
 
-	/*
-	 * Pairs with the smp_load_acquire() in fscrypt_find_master_key().
-	 * I.e., here we publish ->s_master_keys with a RELEASE barrier so that
-	 * concurrent tasks can ACQUIRE it.
-	 */
+	/* Pairs with READ_ONCE() in fscrypt_find_master_key() */
 	smp_store_release(&sb->s_master_keys, keyring);
 	return 0;
 }
@@ -238,13 +234,8 @@ struct key *fscrypt_find_master_key(struct super_block *sb,
 	struct key *keyring;
 	char description[FSCRYPT_MK_DESCRIPTION_SIZE];
 
-	/*
-	 * Pairs with the smp_store_release() in allocate_filesystem_keyring().
-	 * I.e., another task can publish ->s_master_keys concurrently,
-	 * executing a RELEASE barrier.  We need to use smp_load_acquire() here
-	 * to safely ACQUIRE the memory the other task published.
-	 */
-	keyring = smp_load_acquire(&sb->s_master_keys);
+	/* pairs with smp_store_release() in allocate_filesystem_keyring() */
+	keyring = READ_ONCE(sb->s_master_keys);
 	if (keyring == NULL)
 		return ERR_PTR(-ENOKEY); /* No keyring yet, so no keys yet. */
 
@@ -847,7 +838,6 @@ static int check_for_busy_inodes(struct super_block *sb,
 	struct list_head *pos;
 	size_t busy_count = 0;
 	unsigned long ino;
-	char ino_str[50] = "";
 
 	spin_lock(&mk->mk_decrypted_inodes_lock);
 
@@ -869,15 +859,11 @@ static int check_for_busy_inodes(struct super_block *sb,
 	}
 	spin_unlock(&mk->mk_decrypted_inodes_lock);
 
-	/* If the inode is currently being created, ino may still be 0. */
-	if (ino)
-		snprintf(ino_str, sizeof(ino_str), ", including ino %lu", ino);
-
 	fscrypt_warn(NULL,
-		     "%s: %zu inode(s) still busy after removing key with %s %*phN%s",
+		     "%s: %zu inode(s) still busy after removing key with %s %*phN, including ino %lu",
 		     sb->s_id, busy_count, master_key_spec_type(&mk->mk_spec),
 		     master_key_spec_len(&mk->mk_spec), (u8 *)&mk->mk_spec.u,
-		     ino_str);
+		     ino);
 	return -EBUSY;
 }
 

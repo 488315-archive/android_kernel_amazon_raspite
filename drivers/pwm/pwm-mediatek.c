@@ -57,7 +57,7 @@ struct pwm_mediatek_chip {
 };
 
 static const unsigned int pwm_mediatek_reg_offset[] = {
-	0x0010, 0x0050, 0x0090, 0x00d0, 0x0110, 0x0150, 0x0190, 0x0220
+	0x0080, 0x00c0, 0x0100
 };
 
 static inline struct pwm_mediatek_chip *
@@ -307,6 +307,11 @@ static const struct pwm_mediatek_of_data mt8516_pwm_data = {
 	.pwm45_fixup = false,
 };
 
+static const struct pwm_mediatek_of_data mt8169_pwm_data = {
+	.num_pwms = 3,
+	.pwm45_fixup = false,
+};
+
 static const struct of_device_id pwm_mediatek_of_match[] = {
 	{ .compatible = "mediatek,mt2712-pwm", .data = &mt2712_pwm_data },
 	{ .compatible = "mediatek,mt7622-pwm", .data = &mt7622_pwm_data },
@@ -314,6 +319,7 @@ static const struct of_device_id pwm_mediatek_of_match[] = {
 	{ .compatible = "mediatek,mt7628-pwm", .data = &mt7628_pwm_data },
 	{ .compatible = "mediatek,mt7629-pwm", .data = &mt7629_pwm_data },
 	{ .compatible = "mediatek,mt8516-pwm", .data = &mt8516_pwm_data },
+	{ .compatible = "mediatek,mt8169-pwm", .data = &mt8169_pwm_data },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, pwm_mediatek_of_match);

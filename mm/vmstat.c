@@ -1122,7 +1122,9 @@ const char * const vmstat_text[] = {
 	"nr_shadow_call_stack_bytes",
 #endif
 	"nr_bounce",
+#if IS_ENABLED(CONFIG_ZSMALLOC)
 	"nr_zspages",
+#endif
 	"nr_free_cma",
 
 	/* enum numa_stat_item counters */
@@ -1251,7 +1253,7 @@ const char * const vmstat_text[] = {
 	"unevictable_pgs_cleared",
 	"unevictable_pgs_stranded",
 
-#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+#if defined(CONFIG_TRANSPARENT_HUGEPAGE) || defined(CONFIG_GKI_OPT_FEATURES)
 	"thp_fault_alloc",
 	"thp_fault_fallback",
 	"thp_collapse_alloc",
@@ -1291,6 +1293,9 @@ const char * const vmstat_text[] = {
 #ifdef CONFIG_SWAP
 	"swap_ra",
 	"swap_ra_hit",
+#endif
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	/*"speculative_pgfault",*/
 #endif
 #endif /* CONFIG_VM_EVENTS_COUNTERS */
 };

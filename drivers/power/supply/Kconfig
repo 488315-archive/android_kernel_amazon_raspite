@@ -157,6 +157,44 @@ config BATTERY_LEGO_EV3
 	help
 	  Say Y here to enable support for the LEGO MINDSTORMS EV3 battery.
 
+config CHARGER_TYPE_MT6357
+	tristate "MT6357 Charger Type Detection Driver"
+	depends on MFD_MT6397
+	help
+	  Say yes here to enable MT6357 Charger Type
+	  Detection Driver.
+	  This driver use MT6357 to detect charger type
+	  Say no if not using MT6357 Charger Type Detection.
+
+config BATTERY_MT6357
+	tristate "MT6357 fuel gauge support"
+	depends on MFD_MT6397
+	depends on NET
+	help
+	  Say Y to enable support for MT6357 battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
+config BATTERY_MT6358
+	tristate "MT6358 fuel gauge support"
+	depends on MFD_MT6397
+	depends on NET
+	help
+	  Say Y to enable support for MT6358 battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
+config BATTERY_MT6359P
+	tristate "MT6359P fuel gauge support"
+	depends on MFD_MT6397
+	help
+	  Say Y to enable support for MT6359P battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
 config BATTERY_PMU
 	tristate "Apple PMU battery"
 	depends on PPC32 && ADB_PMU
@@ -709,5 +747,79 @@ config CHARGER_WILCO
 	  by the Embedded Controller on the Chromebook named Wilco. Further
 	  information can be found in
 	  Documentation/ABI/testing/sysfs-class-power-wilco
+
+config CHARGER_MT6360
+	tristate "Mediatek MT6360 Charger Driver"
+	depends on MFD_MT6360
+	depends on REGULATOR
+	select EXTCON
+	help
+	  Say Y here to enable MT6360 Charger Part.
+	  support High-Accuracy Voltage/Current Regulation,
+	  Average Input Current Regulation, Battery Tempature Sensing,
+	  Over-Temperature Protection, DPDM Detection for BC1.2
+
+config CHARGER_MT6362
+	tristate "MT6362 SPMI CHG driver"
+	depends on MFD_MT6362
+	help
+	  Say yes here to have support for the MT6362 CHG
+	  It supports BC1.2 and OTG boost.
+	  The driver can also be build as a module.
+	  If so, the module will be called mt6362_chg
+
+config MTK_CHARGER_TYPE_DETECT
+	tristate "Mediatek Charger Type Detect Driver"
+	depends on TCPC_CLASS
+	help
+	  Say Y here to enable Mediatek Charger Type Detect.
+	  Support enable charger type detect when receiving
+	  typec attach notify.
+	  Say N to disable.
+
+config MTK_CHARGER
+	tristate "MediaTek Charging Driver"
+	help
+	  Say yes here to enable MediaTek charging driver.
+	  This driver contains charging control flow and
+	  maintains charging status.
+	  Say no if not using MediaTek charging driver.
+
+config WPC_IDTP922X
+	tristate "idtp922X wireless power driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the idtp922X wireless power.
+
+config MTK_PUMP_EXPRESS_PLUS_SUPPORT
+	tristate "MediaTek PUMP EXPRESS PLUS"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology using switch charger and current pattern
+	  to achive better charging ability.
+	  Set Yes to enable PE+
+	  Set No to disable PE+
+
+config MTK_PUMP_EXPRESS_PLUS_20_SUPPORT
+	tristate "MediaTek PUMP EXPRESS PLUS 2.0"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology using switch charger and current pattern
+	  to achive better charging ability. It has higher charging efficiency
+	  and has better thermal performance than PE+.
+	  Set Yes to enable PE+2.0
+	  Set No to disable PE+2.0
+
+config MTK_PUMP_EXPRESS_40_SUPPORT
+	tristate "MediaTek PUMP EXPRESS 4.0"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology supports request adjustments of source output
+	  voltage in increments as small as 50 mV to achive better charging ability.
+	  It has higher charging efficiency and has better thermal performance than
+	  PE+/PE+2.0.
+	  Set Yes to enable PE 4.0
+	  Set No to disable PE 4.0
 
 endif # POWER_SUPPLY

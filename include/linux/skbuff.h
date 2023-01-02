@@ -41,6 +41,7 @@
 #include <linux/netfilter/nf_conntrack_common.h>
 #endif
 #include <linux/android_kabi.h>
+#include <linux/android_vendor.h>
 
 /* The interface for checksum offload between the stack and networking drivers
  * is as follows...
@@ -529,6 +530,8 @@ struct skb_shared_info {
 	/* Intermediate layers must ensure that destructor_arg
 	 * remains valid until skb destructor */
 	void *		destructor_arg;
+
+	ANDROID_VENDOR_DATA_ARRAY(1, 3);
 
 	/* must be last field, see pskb_expand_head() */
 	skb_frag_t	frags[MAX_SKB_FRAGS];
@@ -1485,11 +1488,6 @@ static inline void skb_mark_not_on_list(struct sk_buff *skb)
 {
 	skb->next = NULL;
 }
-
-/* Iterate through singly-linked GSO fragments of an skb. */
-#define skb_list_walk_safe(first, skb, next_skb)                               \
-	for ((skb) = (first), (next_skb) = (skb) ? (skb)->next : NULL; (skb);  \
-	     (skb) = (next_skb), (next_skb) = (skb) ? (skb)->next : NULL)
 
 static inline void skb_list_del_init(struct sk_buff *skb)
 {

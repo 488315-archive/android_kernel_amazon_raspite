@@ -1003,6 +1003,7 @@ static int i2c_hid_probe(struct i2c_client *client,
 			 const struct i2c_device_id *dev_id)
 {
 	int ret;
+	int mtk_tpd = 0;
 	struct i2c_hid *ihid;
 	struct hid_device *hid;
 	__u16 hidRegister;
@@ -1031,6 +1032,8 @@ static int i2c_hid_probe(struct i2c_client *client,
 		ret = i2c_hid_of_probe(client, &ihid->pdata);
 		if (ret)
 			return ret;
+		/*for mtk touch name*/
+		mtk_tpd = of_property_read_bool(client->dev.of_node, "mtk-tpd");
 	} else if (!platform_data) {
 		ret = i2c_hid_acpi_pdata(client, &ihid->pdata);
 		if (ret)
@@ -1112,8 +1115,12 @@ static int i2c_hid_probe(struct i2c_client *client,
 	hid->vendor = le16_to_cpu(ihid->hdesc.wVendorID);
 	hid->product = le16_to_cpu(ihid->hdesc.wProductID);
 
-	snprintf(hid->name, sizeof(hid->name), "%s %04hX:%04hX",
-		 client->name, hid->vendor, hid->product);
+	/*for mtk touch name*/
+	if (mtk_tpd)
+		strncpy(hid->name, "mtk-tpd", 8);
+	else
+		snprintf(hid->name, sizeof(hid->name), "%s %04hX:%04hX",
+			 client->name, hid->vendor, hid->product);
 	strlcpy(hid->phys, dev_name(&client->dev), sizeof(hid->phys));
 
 	ihid->quirks = i2c_hid_lookup_quirk(hid->vendor, hid->product);

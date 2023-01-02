@@ -18,6 +18,8 @@
 
 #include <trace/events/cgroup.h>
 
+#include <trace/hooks/cgroup.h>
+
 #define cg_invalf(fc, fmt, ...) invalf(fc, fmt, ## __VA_ARGS__)
 
 /*
@@ -522,6 +524,7 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		goto out_finish;
 
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
+	trace_android_vh_cgroup_set_task(ret, task);
 
 out_finish:
 	cgroup_procs_write_finish(task);

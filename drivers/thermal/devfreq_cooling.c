@@ -28,6 +28,12 @@
 
 #include <trace/events/thermal.h>
 
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+#include <linux/metricslog.h>
+#define GPU_METRICS_STR_LEN 128
+#define PREFIX "thermalgpu:def"
+#endif
+
 #define SCALE_ERROR_MITIGATION 100
 
 static DEFINE_IDA(devfreq_ida);
@@ -135,6 +141,10 @@ static int devfreq_cooling_set_cur_state(struct thermal_cooling_device *cdev,
 	struct devfreq *df = dfc->devfreq;
 	struct device *dev = df->dev.parent;
 	int ret;
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+	char buf[GPU_METRICS_STR_LEN];
+	const struct amazon_logger_ops *amazon_logger = amazon_logger_ops_get();
+#endif
 
 	if (state == dfc->cooling_state)
 		return 0;
@@ -147,6 +157,15 @@ static int devfreq_cooling_set_cur_state(struct thermal_cooling_device *cdev,
 	ret = partition_enable_opps(dfc, state);
 	if (ret)
 		return ret;
+
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+	snprintf(buf, GPU_METRICS_STR_LEN,
+		"%s:gpumonitor_%s_cooler_state=%ld;CT;1:NR",
+		PREFIX, cdev->type, state);
+	if (amazon_logger && amazon_logger->log_to_metrics) {
+		amazon_logger->log_to_metrics(ANDROID_LOG_INFO, "ThermalEvent", buf);
+	}
+#endif
 
 	dfc->cooling_state = state;
 

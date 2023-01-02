@@ -3,6 +3,8 @@
  * Record and handle CPU attributes.
  *
  * Copyright (C) 2014 ARM Ltd.
+ *
+ * Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  */
 #include <asm/arch_timer.h>
 #include <asm/cache.h>
@@ -30,6 +32,8 @@
  * current state separately. Certain system registers may contain different
  * values depending on configuration at or after reset.
  */
+#define CPU_SERIAL_SIZE 33
+static char cpu_serial[CPU_SERIAL_SIZE] = {0};
 DEFINE_PER_CPU(struct cpuinfo_arm64, cpu_data);
 static struct cpuinfo_arm64 boot_cpu_data;
 
@@ -41,6 +45,8 @@ static const char *icache_policy_str[] = {
 };
 
 unsigned long __icache_flags;
+
+static const char *machine_desc_str;
 
 static const char *const hwcap_str[] = {
 	"fp",
@@ -124,6 +130,25 @@ static const char *const compat_hwcap2_str[] = {
 };
 #endif /* CONFIG_COMPAT */
 
+static int __init get_cpu_serial(char *str)
+{
+	int ret = 0;
+	memset(cpu_serial,0,sizeof(cpu_serial));
+	ret = snprintf(cpu_serial,sizeof(cpu_serial),str);
+	if (ret < 0) {
+		pr_err("cpuinfo: failed to get cpuserial.\n");
+		return ret;
+	}
+
+	return 0;
+}
+__setup("mtkhwsoc=", get_cpu_serial);
+
+void machine_desc_set(const char *str)
+{
+	machine_desc_str = str;
+}
+
 static int c_show(struct seq_file *m, void *v)
 {
 	int i, j;
@@ -178,6 +203,9 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "CPU part\t: 0x%03x\n", MIDR_PARTNUM(midr));
 		seq_printf(m, "CPU revision\t: %d\n\n", MIDR_REVISION(midr));
 	}
+
+	seq_printf(m, "Hardware\t: %s\n", machine_desc_str);
+	seq_printf(m, "Serial\t\t: %s\n",cpu_serial);
 
 	return 0;
 }

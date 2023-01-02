@@ -99,7 +99,6 @@ config SCSI_UFS_DWC_TC_PLATFORM
 config SCSI_UFS_QCOM
 	tristate "QCOM specific hooks to UFS controller platform driver"
 	depends on SCSI_UFSHCD_PLATFORM && ARCH_QCOM
-	select QCOM_SCM
 	select RESET_CONTROLLER
 	help
 	  This selects the QCOM specific additions to UFSHCD platform driver.
@@ -121,6 +120,18 @@ config SCSI_UFS_MEDIATEK
 	  specific registers.
 
 	  Select this if you have UFS controller on Mediatek chipset.
+
+	  If unsure, say N.
+
+config SCSI_UFS_MEDIATEK_DBG
+	tristate "Debugging facility for MediaTek UFS platforms"
+	depends on SCSI_UFS_MEDIATEK
+	help
+	  This selects the debugging facility for Mediatek UFS platforms.
+	  Provide UFS command history and connection to MediaTek Block IO
+	  Tracer.
+
+	  Select this if you want to enable above facilities.
 
 	  If unsure, say N.
 

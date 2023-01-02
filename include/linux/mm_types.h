@@ -370,6 +370,21 @@ struct vm_area_struct {
 	ANDROID_VENDOR_DATA(1);
 } __randomize_layout;
 
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+/*
+ * seqcount_t vm_sequence;
+ * atomic_t vm_ref_count;	* see vma_get(), vma_put() *
+ */
+struct vma_spf_t {
+	seqcount_t vm_sequence;
+	atomic_t vm_ref_count;	/* see vma_get(), vma_put() */
+};
+#define vma_spf_vm_sequence(vma)	\
+	(((struct vma_spf_t *)&(vma)->android_vendor_data1)->vm_sequence)
+#define vma_spf_vm_ref_count(vma)	\
+	(((struct vma_spf_t *)&(vma)->android_vendor_data1)->vm_ref_count)
+#endif
+
 struct core_thread {
 	struct task_struct *task;
 	struct core_thread *next;
@@ -386,6 +401,7 @@ struct mm_struct {
 	struct {
 		struct vm_area_struct *mmap;		/* list of VMAs */
 		struct rb_root mm_rb;
+
 		u64 vmacache_seqnum;                   /* per-thread vmacache */
 #ifdef CONFIG_MMU
 		unsigned long (*get_unmapped_area) (struct file *filp,
@@ -507,7 +523,8 @@ struct mm_struct {
 #ifdef CONFIG_MMU_NOTIFIER
 		struct mmu_notifier_mm *mmu_notifier_mm;
 #endif
-#if defined(CONFIG_TRANSPARENT_HUGEPAGE) && !USE_SPLIT_PMD_PTLOCKS
+#if (defined(CONFIG_TRANSPARENT_HUGEPAGE) || defined(CONFIG_GKI_OPT_FEATURES)) && \
+    !USE_SPLIT_PMD_PTLOCKS
 		pgtable_t pmd_huge_pte; /* protected by page_table_lock */
 #endif
 #ifdef CONFIG_NUMA_BALANCING
@@ -548,6 +565,10 @@ struct mm_struct {
 	 */
 	unsigned long cpu_bitmap[];
 };
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+/* rwlock_t mm_rb_lock; */
+#define mm_mm_rb_lock(mm) ((rwlock_t *)&(mm)->android_vendor_data1)
+#endif
 
 extern struct mm_struct init_mm;
 
@@ -687,6 +708,7 @@ typedef __bitwise unsigned int vm_fault_t;
  * @VM_FAULT_NEEDDSYNC:		->fault did not modify page tables and needs
  *				fsync() to complete (for synchronous page faults
  *				in DAX)
+ * @VM_FAULT_PTNOTSAME:		Page table entries have changed
  * @VM_FAULT_HINDEX_MASK:	mask HINDEX value
  *
  */
@@ -704,6 +726,7 @@ enum vm_fault_reason {
 	VM_FAULT_FALLBACK       = (__force vm_fault_t)0x000800,
 	VM_FAULT_DONE_COW       = (__force vm_fault_t)0x001000,
 	VM_FAULT_NEEDDSYNC      = (__force vm_fault_t)0x002000,
+	VM_FAULT_PTNOTSAME      = (__force vm_fault_t)0x004000,
 	VM_FAULT_HINDEX_MASK    = (__force vm_fault_t)0x0f0000,
 };
 
@@ -728,7 +751,8 @@ enum vm_fault_reason {
 	{ VM_FAULT_RETRY,               "RETRY" },	\
 	{ VM_FAULT_FALLBACK,            "FALLBACK" },	\
 	{ VM_FAULT_DONE_COW,            "DONE_COW" },	\
-	{ VM_FAULT_NEEDDSYNC,           "NEEDDSYNC" }
+	{ VM_FAULT_NEEDDSYNC,           "NEEDDSYNC" },	\
+	{ VM_FAULT_PTNOTSAME,		"PTNOTSAME" }
 
 struct vm_special_mapping {
 	const char *name;	/* The name, e.g. "[vdso]". */

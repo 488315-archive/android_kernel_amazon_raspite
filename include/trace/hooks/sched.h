@@ -70,6 +70,22 @@ struct sched_group;
 DECLARE_RESTRICTED_HOOK(android_rvh_find_busiest_group,
 	TP_PROTO(struct sched_group *busiest, struct rq *dst_rq, int *out_balance),
 		TP_ARGS(busiest, dst_rq, out_balance), 1);
+
+DECLARE_RESTRICTED_HOOK(android_vh_nice_check,
+	TP_PROTO(long *nice, bool *allowed),
+		TP_ARGS(nice, allowed), 1);
+
+DECLARE_HOOK(android_vh_map_util_freq,
+	TP_PROTO(unsigned long util, unsigned long freq,
+		unsigned long cap, unsigned long *next_freq),
+	TP_ARGS(util, freq, cap, next_freq));
+
+struct em_perf_domain;
+DECLARE_HOOK(android_vh_em_pd_energy,
+	TP_PROTO(struct em_perf_domain *pd,
+		unsigned long max_util, unsigned long sum_util,
+		unsigned long *energy),
+	TP_ARGS(pd, max_util, sum_util, energy));
 #else
 #define trace_android_rvh_select_task_rq_fair(p, prev_cpu, sd_flag, wake_flags, new_cpu)
 #define trace_android_rvh_select_task_rq_rt(p, prev_cpu, sd_flag, wake_flags, new_cpu)
@@ -85,7 +101,12 @@ DECLARE_RESTRICTED_HOOK(android_rvh_find_busiest_group,
 #define trace_android_rvh_set_user_nice(p, nice)
 #define trace_android_rvh_setscheduler(p)
 #define trace_android_rvh_find_busiest_group(busiest, dst_rq, out_balance)
+#define trace_android_vh_nice_check(nice, allowed)
+#define trace_android_vh_map_util_freq(util, freq, cap, next_freq)
+#define trace_android_vh_em_pd_energy(pd, max_util, sum_util, energy)
 #endif
+
+/* macro versions of hooks are no longer required */
 #endif /* _TRACE_HOOK_SCHED_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

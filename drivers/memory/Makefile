@@ -3,6 +3,8 @@
 # Makefile for memory devices
 #
 
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/iommu
+
 obj-$(CONFIG_DDR)		+= jedec_ddr_data.o
 ifeq ($(CONFIG_DDR),y)
 obj-$(CONFIG_OF)		+= of_memory.o
@@ -24,6 +26,7 @@ obj-$(CONFIG_PL353_SMC)		+= pl353-smc.o
 
 obj-$(CONFIG_SAMSUNG_MC)	+= samsung/
 obj-$(CONFIG_TEGRA_MC)		+= tegra/
+obj-$(CONFIG_HAVE_MTK_MC)	+= mediatek/
 obj-$(CONFIG_TI_EMIF_SRAM)	+= ti-emif-sram.o
 ti-emif-sram-objs		:= ti-emif-pm.o ti-emif-sram-pm.o
 

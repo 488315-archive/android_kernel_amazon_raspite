@@ -47,6 +47,7 @@ config GKI_HIDDEN_SND_SOC_CONFIGS
 	select SND_PCM_IEC958
 	select SND_SOC_COMPRESS if (SND_SOC && SND)
 	select SND_SOC_TOPOLOGY if (SND_SOC && SND)
+	select DMA_VIRTUAL_CHANNELS
 	help
 	  Dummy config option used to enable hidden SND_SOC configs.
 	  These are normally selected implicitly when a module
@@ -73,22 +74,12 @@ config GKI_HIDDEN_QCOM_CONFIGS
 	bool "Hidden QCOM configs needed for GKI"
 	select QCOM_SMEM_STATE
 	select QCOM_GDSC if (ARCH_QCOM)
-	select PINCTRL_MSM if (PINCTRL && ARCH_QCOM)
 	select IOMMU_IO_PGTABLE_LPAE if (ARCH_QCOM)
 
 	help
 	  Dummy config option used to enable hidden QCOM configs.
 	  These are normally selected implicitly when a module
 	  that relies on it is configured.
-
-config GKI_QCOM_CLKS_CONFIGS
-	bool "QCOM clk drivers needed for GKI due to powerdomain restrictions"
-	select QCOM_RPMHPD	if (ARCH_QCOM)
-	help
-	  This config option selects various QCOM clk drivers that
-	  cannot be built as a module currently due to power-domain
-	  deferred probing limitations.
-	  See https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=e01afc32502555beb2057ddd74401be38475d851
 
 config GKI_HIDDEN_MEDIA_CONFIGS
 	bool "Hidden Media configs needed for GKI"
@@ -205,7 +196,6 @@ config GKI_HACKS_TO_FIX
 	select GKI_LEGACY_WEXT_ALLCONFIG
 	select GKI_HIDDEN_MEDIA_CONFIGS
 	select GKI_HIDDEN_VIRTUAL_CONFIGS
-	select GKI_QCOM_CLKS_CONFIGS
 	select GKI_HIDDEN_USB_CONFIGS
 	select GKI_HIDDEN_SOC_BUS_CONFIGS
 	select GKI_HIDDEN_RPMSG_CONFIGS
@@ -218,3 +208,11 @@ config GKI_HACKS_TO_FIX
 
 	  Unless you are building a GKI kernel to be used with modules
 	  built from a different config, say N here.
+
+config GKI_OPT_FEATURES
+	bool "Optional GKI features"
+	help
+	  Config option that should be enabled in GKI kernels to allow optional
+	  GKI features be enabled or disabled without ABI breakage.
+
+	  If you are not building a GKI kernel, say N here.

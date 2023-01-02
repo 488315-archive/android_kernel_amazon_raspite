@@ -32,6 +32,12 @@ struct led_pwm_priv {
 	struct led_pwm_data leds[0];
 };
 
+#if IS_ENABLED(CONFIG_MTK_BOOT)
+#define KERNEL_POWER_OFF_CHARGING_BOOT	8
+#define LOW_POWER_OFF_CHARGING_BOOT	9
+unsigned int get_boot_mode(void);
+#endif
+
 static void __led_pwm_set(struct led_pwm_data *led_dat)
 {
 	int new_duty = led_dat->duty;
@@ -75,9 +81,21 @@ static int led_pwm_add(struct device *dev, struct led_pwm_priv *priv,
 	led_data->active_low = led->active_low;
 	led_data->cdev.name = led->name;
 	led_data->cdev.default_trigger = led->default_trigger;
-	led_data->cdev.brightness = LED_OFF;
 	led_data->cdev.max_brightness = led->max_brightness;
 	led_data->cdev.flags = LED_CORE_SUSPENDRESUME;
+	/*
+	 * 8 KERNEL_POWER_OFF_CHARGING_BOOT
+	 * 9 LOW_POWER_OFF_CHARGING_BOOT
+	*/
+#if IS_ENABLED(CONFIG_MTK_BOOT)
+	if ((get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT) ||
+		(get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT))
+		led_data->cdev.brightness = LED_OFF;
+	else
+		led_data->cdev.brightness = LED_FULL;
+#else
+	led_data->cdev.brightness = LED_FULL;
+#endif
 
 	if (fwnode)
 		led_data->pwm = devm_fwnode_pwm_get(dev, fwnode, NULL);

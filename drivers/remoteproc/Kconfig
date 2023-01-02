@@ -14,6 +14,14 @@ config REMOTEPROC
 
 if REMOTEPROC
 
+config MTK_CCD_REMOTEPROC
+	tristate "MediaTek CCD driver"
+	help
+	  Say y here to enable support communication channels to remote
+	  processors in MediaTek platforms. This uses MTK ccd driver to
+	  communicate with Camera Control Daemon base on rpmsg framework. It
+	  provide channels, endpoints creation and send operations.
+
 config IMX_REMOTEPROC
 	tristate "IMX6/7 remoteproc support"
 	depends on ARCH_MXC

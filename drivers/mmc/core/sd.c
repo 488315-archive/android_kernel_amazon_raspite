@@ -18,6 +18,10 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
 
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+#include <linux/metricslog.h>
+#endif
+
 #include "core.h"
 #include "card.h"
 #include "host.h"
@@ -65,7 +69,51 @@ static const unsigned int sd_au_size[] = {
 			__res |= resp[__off-1] << ((32 - __shft) % 32);	\
 		__res & __mask;						\
 	})
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+#define METRICS_TIMEOUT_DELAY      (3*3600*HZ)
+#define SD_TIMEOUT_THRESHOLD        1000
 
+void sd_metrics_timeout_work(struct work_struct *work)
+{
+	struct mmc_host *host = container_of(work, struct mmc_host, metrics_timeout_work.work);
+	char buf[256] = {0};
+	const struct amazon_logger_ops *logger;
+
+	logger=amazon_logger_ops_get();
+	if ((u64)atomic64_read(&host->data_timeout_count) > SD_TIMEOUT_THRESHOLD) {
+		mutex_lock(&host->cid_mutex);
+		snprintf(buf, sizeof(buf),
+			"%s:def:sdcard_datatimeout_ratio=%llu;CT;1,"
+			"sdcard_datatimeout_count=%llu;CT;1,sdcard_data_count=%llu;CT;1:NR",
+			host->cid, ((u64)atomic64_read(&host->data_timeout_count)*1000000)/(u64)atomic64_read(&host->data_count),
+			(u64)atomic64_read(&host->data_timeout_count),
+			(u64)atomic64_read(&host->data_count));
+		mutex_unlock(&host->cid_mutex);
+		if(logger != NULL){
+			logger->log_to_metrics(ANDROID_LOG_INFO, "SDTimeoutEvent", buf);
+		}
+	}
+	mod_delayed_work(system_wq, &host->metrics_timeout_work, METRICS_TIMEOUT_DELAY);
+}
+
+static void metrics_sd_detect(struct mmc_host *host, bool inserted)
+{
+	if (inserted) {
+		mutex_lock(&host->cid_mutex);
+		snprintf(host->cid, 40, "%08x%08x%08x%08x",
+			host->card->raw_cid[0], host->card->raw_cid[1],
+			host->card->raw_cid[2], host->card->raw_cid[3]);
+		mutex_unlock(&host->cid_mutex);
+
+		mod_delayed_work(system_wq, &host->metrics_timeout_work,
+				METRICS_TIMEOUT_DELAY);
+	} else {
+		cancel_delayed_work(&host->metrics_timeout_work);
+		atomic64_set(&host->data_timeout_count, 0);
+		atomic64_set(&host->data_count, 0);
+	}
+}
+#endif
 /*
  * Given the decoded CSD structure, decode the raw CID to our CID structure.
  */
@@ -259,7 +307,7 @@ static int mmc_read_ssr(struct mmc_card *card)
 
 	for (i = 0; i < 16; i++)
 		card->raw_ssr[i] = be32_to_cpu(raw_ssr[i]);
-
+	card->sd_speed_class = card->raw_ssr[2]>>24;
 	kfree(raw_ssr);
 
 	/*
@@ -689,7 +737,8 @@ MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
 MMC_DEV_ATTR(rca, "0x%04x\n", card->rca);
-
+MMC_DEV_ATTR(sclass, "0x%0x\n", card->sd_speed_class);
+MMC_DEV_ATTR(timing, "%u\n", (&card->host->ios)->timing);
 
 static ssize_t mmc_dsr_show(struct device *dev,
                            struct device_attribute *attr,
@@ -724,6 +773,8 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_ocr.attr,
 	&dev_attr_rca.attr,
 	&dev_attr_dsr.attr,
+	&dev_attr_sclass.attr,
+	&dev_attr_timing.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(sd_std);
@@ -1144,6 +1195,9 @@ static void mmc_sd_detect(struct mmc_host *host)
 	mmc_put_card(host->card, NULL);
 
 	if (err) {
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+		metrics_sd_detect(host, false);
+#endif
 		mmc_sd_remove(host);
 
 		mmc_claim_host(host);
@@ -1329,6 +1383,10 @@ int mmc_attach_sd(struct mmc_host *host)
 	err = mmc_add_card(host->card);
 	if (err)
 		goto remove_card;
+
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+	metrics_sd_detect(host, true);
+#endif
 
 	mmc_claim_host(host);
 	return 0;

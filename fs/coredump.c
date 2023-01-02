@@ -54,7 +54,11 @@
 
 int core_uses_pid;
 unsigned int core_pipe_limit;
+#ifdef CONFIG_SECURITY_SELINUX_KERN_PERMISSIVE
+char core_pattern[CORENAME_MAX_SIZE] = "/data/debug_service/coredump_current/core-%e-%p-%t";
+#else
 char core_pattern[CORENAME_MAX_SIZE] = "core";
+#endif
 static int core_name_size = CORENAME_MAX_SIZE;
 
 struct core_name {
@@ -565,6 +569,10 @@ static int umh_pipe_setup(struct subprocess_info *info, struct cred *new)
 	return err;
 }
 
+#ifdef CONFIG_SECURITY_SELINUX_KERN_PERMISSIVE
+extern void selinux_set_enforce(bool enforce);
+#endif
+
 void do_coredump(const kernel_siginfo_t *siginfo)
 {
 	struct core_state core_state;
@@ -750,6 +758,9 @@ void do_coredump(const kernel_siginfo_t *siginfo)
 				cn.corename, open_flags, 0600);
 			path_put(&root);
 		} else {
+			#ifdef CONFIG_SECURITY_SELINUX_KERN_PERMISSIVE
+				selinux_set_enforce(false);
+			#endif
 			cprm.file = filp_open(cn.corename, open_flags, 0600);
 		}
 		if (IS_ERR(cprm.file))
@@ -806,6 +817,9 @@ void do_coredump(const kernel_siginfo_t *siginfo)
 close_fail:
 	if (cprm.file)
 		filp_close(cprm.file, NULL);
+	#ifdef CONFIG_SECURITY_SELINUX_KERN_PERMISSIVE
+		selinux_set_enforce(true);
+	#endif
 fail_dropcount:
 	if (ispipe)
 		atomic_dec(&core_dump_count);

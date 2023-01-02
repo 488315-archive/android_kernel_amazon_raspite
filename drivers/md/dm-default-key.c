@@ -70,8 +70,7 @@ static void default_key_dtr(struct dm_target *ti)
 	int err;
 
 	if (dkc->dev) {
-		err = blk_crypto_evict_key(bdev_get_queue(dkc->dev->bdev),
-					   &dkc->key);
+		err = blk_crypto_evict_key(dkc->dev->bdev->bd_queue, &dkc->key);
 		if (err && err != -ENOKEY)
 			DMWARN("Failed to evict crypto key: %d", err);
 		dm_put_device(ti, dkc->dev);
@@ -246,8 +245,9 @@ static int default_key_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		goto bad;
 	}
 
-	err = blk_crypto_start_using_key(&dkc->key,
-					 bdev_get_queue(dkc->dev->bdev));
+	err = blk_crypto_start_using_mode(cipher->mode_num, dun_bytes,
+					  dkc->sector_size, dkc->is_hw_wrapped,
+					  dkc->dev->bdev->bd_queue);
 	if (err) {
 		ti->error = "Error starting to use blk-crypto";
 		goto bad;
@@ -388,7 +388,7 @@ static void default_key_io_hints(struct dm_target *ti,
 	const unsigned int sector_size = dkc->sector_size;
 
 	limits->logical_block_size =
-		max_t(unsigned int, limits->logical_block_size, sector_size);
+		max_t(unsigned short, limits->logical_block_size, sector_size);
 	limits->physical_block_size =
 		max_t(unsigned int, limits->physical_block_size, sector_size);
 	limits->io_min = max_t(unsigned int, limits->io_min, sector_size);

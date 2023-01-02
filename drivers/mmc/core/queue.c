@@ -18,6 +18,7 @@
 #include "queue.h"
 #include "block.h"
 #include "core.h"
+#include "crypto.h"
 #include "card.h"
 #include "host.h"
 
@@ -129,6 +130,7 @@ static enum blk_eh_timer_return mmc_mq_timed_out(struct request *req,
 	bool ignore_tout;
 
 	spin_lock_irqsave(&mq->lock, flags);
+
 	ignore_tout = mq->recovery_needed || !mq->use_cqe || host->hsq_enabled;
 	spin_unlock_irqrestore(&mq->lock, flags);
 
@@ -176,6 +178,8 @@ static struct scatterlist *mmc_alloc_sg(int sg_len, gfp_t gfp)
 	return sg;
 }
 
+/* Set the max prefered erase sectors to  512KB */
+#define PREF_ERASE_SECTORS	1024
 static void mmc_queue_setup_discard(struct request_queue *q,
 				    struct mmc_card *card)
 {
@@ -187,7 +191,12 @@ static void mmc_queue_setup_discard(struct request_queue *q,
 
 	blk_queue_flag_set(QUEUE_FLAG_DISCARD, q);
 	blk_queue_max_discard_sectors(q, max_discard);
-	q->limits.discard_granularity = card->pref_erase << 9;
+
+	/* Limit it to 512KB */
+	if (card->pref_erase > PREF_ERASE_SECTORS)
+		q->limits.discard_granularity = PREF_ERASE_SECTORS << 9;
+	else
+		q->limits.discard_granularity = card->pref_erase << 9;
 	/* granularity must not be greater than max. discard */
 	if (card->pref_erase > max_discard)
 		q->limits.discard_granularity = SECTOR_SIZE;
@@ -475,10 +484,12 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card)
 		mq->queue->backing_dev_info->capabilities |=
 			BDI_CAP_STABLE_WRITES;
 
+	mq->queue->backing_dev_info->ra_pages = 128;
 	mq->queue->queuedata = mq;
 	blk_queue_rq_timeout(mq->queue, 60 * HZ);
 
 	mmc_setup_queue(mq, card);
+	mmc_crypto_setup_queue(host, mq->queue);
 	return 0;
 
 free_tag_set:

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 menuconfig INTERCONNECT
-	tristate "On-Chip Interconnect management support"
+	bool "On-Chip Interconnect management support"
 	help
 	  Support for management of the on-chip interconnects.
 
@@ -12,5 +12,6 @@ menuconfig INTERCONNECT
 if INTERCONNECT
 
 source "drivers/interconnect/qcom/Kconfig"
+source "drivers/interconnect/mediatek/Kconfig"
 
 endif

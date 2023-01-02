@@ -484,6 +484,29 @@ int snd_soc_pcm_component_copy_user(struct snd_pcm_substream *substream,
 	return -EINVAL;
 }
 
+int snd_soc_pcm_component_fill_silence(struct snd_pcm_substream *substream,
+				       int channel, unsigned long pos,
+				       unsigned long bytes)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_rtdcom_list *rtdcom;
+	struct snd_soc_component *component;
+
+	for_each_rtdcom(rtd, rtdcom) {
+		component = rtdcom->component;
+
+		if (!component->driver->ops ||
+		    !component->driver->ops->fill_silence)
+			continue;
+
+		/* FIXME. it returns 1st silence now */
+		return component->driver->ops->fill_silence(
+			substream, channel, pos, bytes);
+	}
+
+	return -EINVAL;
+}
+
 struct page *snd_soc_pcm_component_page(struct snd_pcm_substream *substream,
 					unsigned long offset)
 {

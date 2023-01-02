@@ -40,6 +40,7 @@ void mmc_run_bkops(struct mmc_card *card);
 int mmc_flush_cache(struct mmc_card *card);
 int mmc_cmdq_enable(struct mmc_card *card);
 int mmc_cmdq_disable(struct mmc_card *card);
+int mmc_poll_for_busy(struct mmc_card *card, unsigned int timeout_ms, bool send_status, bool retry_crc_err);
 
 #endif
 

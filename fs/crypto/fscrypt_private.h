@@ -11,17 +11,17 @@
 #ifndef _FSCRYPT_PRIVATE_H
 #define _FSCRYPT_PRIVATE_H
 
+#define FSCRYPT_NEED_OPS
 #include <linux/fscrypt.h>
 #include <linux/siphash.h>
 #include <crypto/hash.h>
-#include <linux/blk-crypto.h>
+#include <linux/bio-crypt-ctx.h>
 
 #define CONST_STRLEN(str)	(sizeof(str) - 1)
 
-#define FSCRYPT_FILE_NONCE_SIZE	16
+#define FS_KEY_DERIVATION_NONCE_SIZE	16
 
-#define FSCRYPT_MIN_KEY_SIZE	16
-
+#define FSCRYPT_MIN_KEY_SIZE		16
 #define FSCRYPT_MAX_HW_WRAPPED_KEY_SIZE	128
 
 #define FSCRYPT_CONTEXT_V1	1
@@ -33,7 +33,7 @@ struct fscrypt_context_v1 {
 	u8 filenames_encryption_mode;
 	u8 flags;
 	u8 master_key_descriptor[FSCRYPT_KEY_DESCRIPTOR_SIZE];
-	u8 nonce[FSCRYPT_FILE_NONCE_SIZE];
+	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 };
 
 struct fscrypt_context_v2 {
@@ -43,7 +43,7 @@ struct fscrypt_context_v2 {
 	u8 flags;
 	u8 __reserved[4];
 	u8 master_key_identifier[FSCRYPT_KEY_IDENTIFIER_SIZE];
-	u8 nonce[FSCRYPT_FILE_NONCE_SIZE];
+	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 };
 
 /*
@@ -99,6 +99,7 @@ static inline const u8 *fscrypt_context_nonce(const union fscrypt_context *ctx)
 	return NULL;
 }
 
+#undef fscrypt_policy
 union fscrypt_policy {
 	u8 version;
 	struct fscrypt_policy_v1 v1;
@@ -192,9 +193,9 @@ struct fscrypt_prepared_key {
 struct fscrypt_info {
 
 	/* The key in a form prepared for actual encryption/decryption */
-	struct fscrypt_prepared_key ci_enc_key;
+	struct fscrypt_prepared_key	ci_key;
 
-	/* True if ci_enc_key should be freed when this fscrypt_info is freed */
+	/* True if the key should be freed when this fscrypt_info is freed */
 	bool ci_owns_key;
 
 #ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
@@ -229,7 +230,7 @@ struct fscrypt_info {
 
 	/*
 	 * If non-NULL, then encryption is done using the master key directly
-	 * and ci_enc_key will equal ci_direct_key->dk_key.
+	 * and ci_key will equal ci_direct_key->dk_key.
 	 */
 	struct fscrypt_direct_key *ci_direct_key;
 
@@ -245,7 +246,7 @@ struct fscrypt_info {
 	union fscrypt_policy ci_policy;
 
 	/* This inode's nonce, copied from the fscrypt_context */
-	u8 ci_nonce[FSCRYPT_FILE_NONCE_SIZE];
+	u8 ci_nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 
 	/* Hashed inode number.  Only set for IV_INO_LBLK_32 */
 	u32 ci_hashed_ino;
@@ -281,7 +282,7 @@ union fscrypt_iv {
 		__le64 lblk_num;
 
 		/* per-file nonce; only set in DIRECT_KEY mode */
-		u8 nonce[FSCRYPT_FILE_NONCE_SIZE];
+		u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 	};
 	u8 raw[FSCRYPT_MAX_IV_SIZE];
 	__le64 dun[FSCRYPT_MAX_IV_SIZE / sizeof(__le64)];
@@ -293,9 +294,8 @@ void fscrypt_generate_iv(union fscrypt_iv *iv, u64 lblk_num,
 /* fname.c */
 int fscrypt_fname_encrypt(const struct inode *inode, const struct qstr *iname,
 			  u8 *out, unsigned int olen);
-bool fscrypt_fname_encrypted_size(const union fscrypt_policy *policy,
-				  u32 orig_len, u32 max_len,
-				  u32 *encrypted_len_ret);
+bool fscrypt_fname_encrypted_size(const struct inode *inode, u32 orig_len,
+				  u32 max_len, u32 *encrypted_len_ret);
 
 /* hkdf.c */
 
@@ -313,13 +313,13 @@ int fscrypt_init_hkdf(struct fscrypt_hkdf *hkdf, const u8 *master_key,
  * outputs are unique and cryptographically isolated, i.e. knowledge of one
  * output doesn't reveal another.
  */
-#define HKDF_CONTEXT_KEY_IDENTIFIER	1 /* info=<empty>		*/
-#define HKDF_CONTEXT_PER_FILE_ENC_KEY	2 /* info=file_nonce		*/
-#define HKDF_CONTEXT_DIRECT_KEY		3 /* info=mode_num		*/
-#define HKDF_CONTEXT_IV_INO_LBLK_64_KEY	4 /* info=mode_num||fs_uuid	*/
-#define HKDF_CONTEXT_DIRHASH_KEY	5 /* info=file_nonce		*/
-#define HKDF_CONTEXT_IV_INO_LBLK_32_KEY	6 /* info=mode_num||fs_uuid	*/
-#define HKDF_CONTEXT_INODE_HASH_KEY	7 /* info=<empty>		*/
+#define HKDF_CONTEXT_KEY_IDENTIFIER	1
+#define HKDF_CONTEXT_PER_FILE_ENC_KEY	2
+#define HKDF_CONTEXT_DIRECT_KEY		3
+#define HKDF_CONTEXT_IV_INO_LBLK_64_KEY	4
+#define HKDF_CONTEXT_DIRHASH_KEY	5
+#define HKDF_CONTEXT_IV_INO_LBLK_32_KEY	6
+#define HKDF_CONTEXT_INODE_HASH_KEY	7
 
 int fscrypt_hkdf_expand(const struct fscrypt_hkdf *hkdf, u8 context,
 			const u8 *info, unsigned int infolen,
@@ -329,8 +329,8 @@ void fscrypt_destroy_hkdf(struct fscrypt_hkdf *hkdf);
 
 /* inline_crypt.c */
 #ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
-int fscrypt_select_encryption_impl(struct fscrypt_info *ci,
-				   bool is_hw_wrapped_key);
+extern int fscrypt_select_encryption_impl(struct fscrypt_info *ci,
+					  bool is_hw_wrapped_key);
 
 static inline bool
 fscrypt_using_inline_encryption(const struct fscrypt_info *ci)
@@ -338,13 +338,15 @@ fscrypt_using_inline_encryption(const struct fscrypt_info *ci)
 	return ci->ci_inlinecrypt;
 }
 
-int fscrypt_prepare_inline_crypt_key(struct fscrypt_prepared_key *prep_key,
-				     const u8 *raw_key,
-				     unsigned int raw_key_size,
-				     bool is_hw_wrapped,
-				     const struct fscrypt_info *ci);
+extern int fscrypt_prepare_inline_crypt_key(
+					struct fscrypt_prepared_key *prep_key,
+					const u8 *raw_key,
+					unsigned int raw_key_size,
+					bool is_hw_wrapped,
+					const struct fscrypt_info *ci);
 
-void fscrypt_destroy_inline_crypt_key(struct fscrypt_prepared_key *prep_key);
+extern void fscrypt_destroy_inline_crypt_key(
+					struct fscrypt_prepared_key *prep_key);
 
 extern int fscrypt_derive_raw_secret(struct super_block *sb,
 				     const u8 *wrapped_key,
@@ -381,8 +383,8 @@ static inline int fscrypt_select_encryption_impl(struct fscrypt_info *ci,
 	return 0;
 }
 
-static inline bool
-fscrypt_using_inline_encryption(const struct fscrypt_info *ci)
+static inline bool fscrypt_using_inline_encryption(
+					const struct fscrypt_info *ci)
 {
 	return false;
 }
@@ -586,8 +588,8 @@ struct fscrypt_mode {
 	const char *cipher_str;
 	int keysize;
 	int ivsize;
-	int logged_impl_name;
 	enum blk_crypto_mode_num blk_crypto_mode;
+	int logged_impl_name;
 };
 
 extern struct fscrypt_mode fscrypt_modes[];
@@ -601,9 +603,6 @@ void fscrypt_destroy_prepared_key(struct fscrypt_prepared_key *prep_key);
 int fscrypt_set_per_file_enc_key(struct fscrypt_info *ci, const u8 *raw_key);
 
 int fscrypt_derive_dirhash_key(struct fscrypt_info *ci,
-			       const struct fscrypt_master_key *mk);
-
-void fscrypt_hash_inode_number(struct fscrypt_info *ci,
 			       const struct fscrypt_master_key *mk);
 
 /* keysetup_v1.c */
@@ -624,6 +623,5 @@ bool fscrypt_supported_policy(const union fscrypt_policy *policy_u,
 int fscrypt_policy_from_context(union fscrypt_policy *policy_u,
 				const union fscrypt_context *ctx_u,
 				int ctx_size);
-const union fscrypt_policy *fscrypt_policy_to_inherit(struct inode *dir);
 
 #endif /* _FSCRYPT_PRIVATE_H */

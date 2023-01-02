@@ -148,6 +148,9 @@ struct mmc_host_ops {
 	/* Prepare HS400 target operating frequency depending host driver */
 	int	(*prepare_hs400_tuning)(struct mmc_host *host, struct mmc_ios *ios);
 
+	/* Execute HS400 tuning depending host driver */
+	int	(*execute_hs400_tuning)(struct mmc_host *host, struct mmc_card *card);
+
 	/* Prepare switch to DDR during the HS400 init sequence */
 	int	(*hs400_prepare_ddr)(struct mmc_host *host);
 
@@ -172,6 +175,11 @@ struct mmc_host_ops {
 	 */
 	int	(*multi_io_quirk)(struct mmc_card *card,
 				  unsigned int direction, int blk_size);
+
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+	/* Optional callback to support log card detection irq */
+	void (*cd_irq)(struct mmc_host *host);
+#endif
 };
 
 struct mmc_cqe_ops {
@@ -373,10 +381,19 @@ struct mmc_host {
 #define MMC_CAP2_CQE_DCMD	(1 << 24)	/* CQE can issue a direct command */
 #define MMC_CAP2_AVOID_3_3V	(1 << 25)	/* Host must negotiate down from 3.3V */
 #define MMC_CAP2_MERGE_CAPABLE	(1 << 26)	/* Host can merge a segment over the segment size */
+#define MMC_CAP2_CRYPTO		(1 << 27)	/* Host supports inline encryption */
 
 	int			fixed_drv_type;	/* fixed driver type for non-removable media */
 
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+	struct delayed_work	metrics_delay_work; /* delayed metrics output */
+	struct delayed_work	metrics_timeout_work; /* delayed metrics output */
+	atomic64_t data_count; /* total send data count */
+	atomic64_t data_timeout_count; /* data timeout count */
+	struct mutex cid_mutex; /*mutex for CID RW */
+	char cid[40]; /* raw card CID */
+#endif /* #if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG) */
 
 	/* host specific block data */
 	unsigned int		max_seg_size;	/* see blk_queue_max_segment_size */
@@ -465,6 +482,10 @@ struct mmc_host {
 	int			cqe_qdepth;
 	bool			cqe_enabled;
 	bool			cqe_on;
+#ifdef CONFIG_MMC_CRYPTO
+	struct keyslot_manager	*ksm;
+	void *crypto_DO_NOT_USE[7];
+#endif /* CONFIG_MMC_CRYPTO */
 
 	/* Host Software Queue support */
 	bool			hsq_enabled;

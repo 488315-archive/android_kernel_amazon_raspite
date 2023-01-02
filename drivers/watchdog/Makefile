@@ -3,6 +3,9 @@
 # Makefile for the WatchDog device drivers.
 #
 
+# SW/HW watch dog
+obj-$(CONFIG_MAGIC_SYSRQ_WD_TEST) += mtk_wdt_func.o
+
 # The WatchDog Timer Driver Core.
 obj-$(CONFIG_WATCHDOG_CORE)	+= watchdog.o
 

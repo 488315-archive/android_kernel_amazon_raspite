@@ -55,10 +55,20 @@
 #include <trace/events/initcall.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
+#undef CREATE_TRACE_POINTS
+#include <trace/hooks/debug.h>
 
 #include "console_cmdline.h"
 #include "braille.h"
 #include "internal.h"
+
+/*
+ * 0: uart printk enable
+ * 1: uart printk disable
+ */
+int printk_disable_uart;
+
+module_param_named(disable_uart, printk_disable_uart, int, 0644);
 
 int console_printk[4] = {
 	CONSOLE_LOGLEVEL_DEFAULT,	/* console_loglevel */
@@ -1804,6 +1814,9 @@ static void call_console_drivers(const char *ext_text, size_t ext_len,
 		return;
 
 	for_each_console(con) {
+		/* if uart printk disabled */
+		if ((printk_disable_uart == 1) && (con->flags & CON_CONSDEV))
+			continue;
 		if (exclusive_console && con != exclusive_console)
 			continue;
 		if (!(con->flags & CON_ENABLED))
@@ -2007,6 +2020,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 	pending_output = (curr_log_seq != log_next_seq);
 	logbuf_unlock_irqrestore(flags);
 
+	trace_android_vh_printk_store(facility, level);
 	/* If called from the scheduler, we can not call up(). */
 	if (!in_sched && pending_output) {
 		/*

@@ -333,13 +333,25 @@ static int allocate_power(struct thermal_zone_device *tz,
 			  int control_temp)
 {
 	struct thermal_instance *instance;
-	struct power_allocator_params *params = tz->governor_data;
+	struct power_allocator_params *params;
 	u32 *req_power, *max_power, *granted_power, *extra_actor_power;
 	u32 *weighted_req_power;
 	u32 total_req_power, max_allocatable_power, total_weighted_req_power;
 	u32 total_granted_power, power_range;
 	int i, num_actors, total_weight, ret = 0;
-	int trip_max_desired_temperature = params->trip_max_desired_temperature;
+	int trip_max_desired_temperature = INVALID_TRIP;
+
+	if (WARN_ON(!tz))
+		return -ENODEV;
+
+	if (WARN_ON(!tz->governor_data)) {
+		dev_warn(&tz->device,
+			"allocate_power: thermal_zone%d, NULL governor_data\n", tz->id);
+		return -EINVAL;
+	}
+
+	params = tz->governor_data;
+	trip_max_desired_temperature = params->trip_max_desired_temperature;
 
 	mutex_lock(&tz->lock);
 
@@ -585,7 +597,7 @@ static int power_allocator_bind(struct thermal_zone_device *tz)
 	reset_pid_controller(params);
 
 	tz->governor_data = params;
-
+	dev_warn(&tz->device, "power_allocator: bind governor_data\n");
 	return 0;
 
 free_params:
@@ -598,7 +610,7 @@ static void power_allocator_unbind(struct thermal_zone_device *tz)
 {
 	struct power_allocator_params *params = tz->governor_data;
 
-	dev_dbg(&tz->device, "Unbinding from thermal zone %d\n", tz->id);
+	dev_warn(&tz->device, "Unbinding from thermal zone %d\n", tz->id);
 
 	if (params->allocated_tzp) {
 		kfree(tz->tzp);

@@ -368,6 +368,10 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
 	.page_mkwrite   = ext4_page_mkwrite,
 };
 
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+const struct vm_operations_struct *spf_ext4_file_vm_ops = &ext4_file_vm_ops;
+#endif
+
 static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct inode *inode = file->f_mapping->host;

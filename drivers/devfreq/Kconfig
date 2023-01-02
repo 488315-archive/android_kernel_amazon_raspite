@@ -73,6 +73,8 @@ config DEVFREQ_GOV_PASSIVE
 	  device. This governor does not change the frequency by itself
 	  through sysfs entries. The passive governor recommends that
 	  devfreq device uses the OPP table to get the frequency/voltage.
+	  Alternatively the governor can also be chosen to scale based on
+	  the online CPUs current frequency.
 
 comment "DEVFREQ Drivers"
 
@@ -91,6 +93,15 @@ config ARM_EXYNOS_BUS_DEVFREQ
 	  PPMU counters of memory controllers by using DEVFREQ-event device
 	  and adjusts the operating frequencies and voltages with OPP support.
 	  This does not yet operate with optimal voltages.
+
+config ARM_MEDIATEK_CCI_DEVFREQ
+	tristate "MEDIATEK CCI DEVFREQ Driver"
+	depends on ARM_MEDIATEK_CPUFREQ
+	help
+	  This adds a devfreq driver for Mediatek Cache Coherent Interconnect
+	  which is shared the same regulator with cpu cluster. It can track
+	  buck voltage and update a proper CCI frequency. Use notification
+	  to get regulator status.
 
 config ARM_TEGRA_DEVFREQ
 	tristate "NVIDIA Tegra30/114/124/210 DEVFREQ Driver"
@@ -128,6 +139,17 @@ config ARM_RK3399_DMC_DEVFREQ
           This adds the DEVFREQ driver for the RK3399 DMC(Dynamic Memory Controller).
           It sets the frequency for the memory controller and reads the usage counts
           from hardware.
+
+config MTK_DVFSRC_DEVFREQ
+	tristate "MediaTek DVFSRC DEVFREQ Driver"
+	depends on (MTK_DVFSRC && HAVE_ARM_SMCCC) || \
+		(COMPILE_TEST && MTK_DVFSRC && HAVE_ARM_SMCCC)
+	select DEVFREQ_GOV_USERSPACE
+	help
+	  This adds the DEVFREQ driver for the MediaTek DVFSRC
+	  (dynamic voltage and frequency scaling resource collector).
+	  The driver support to request dram frequency by DVFSRC and
+	  user can adjust dram frequency on userspace.
 
 source "drivers/devfreq/event/Kconfig"
 

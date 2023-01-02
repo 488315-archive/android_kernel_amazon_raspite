@@ -3066,6 +3066,8 @@ int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num)
 
 		if (ops->copy_user)
 			rtd->ops.copy_user	= snd_soc_pcm_component_copy_user;
+		if (ops->fill_silence)
+			rtd->ops.fill_silence	= snd_soc_pcm_component_fill_silence;
 		if (ops->page)
 			rtd->ops.page		= snd_soc_pcm_component_page;
 		if (ops->mmap)

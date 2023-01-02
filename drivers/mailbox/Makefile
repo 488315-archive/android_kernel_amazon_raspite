@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 # Generic MAILBOX API
 
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
 obj-$(CONFIG_MAILBOX)		+= mailbox.o
 
 obj-$(CONFIG_MAILBOX_TEST)	+= mailbox-test.o

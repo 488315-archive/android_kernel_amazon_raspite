@@ -196,6 +196,7 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
 		return;
 
 	pr_info("Machine model: %s\n", name);
+	machine_desc_set(of_flat_dt_get_machine_name());
 	dump_stack_set_arch_desc("%s (DT)", name);
 }
 
@@ -289,6 +290,9 @@ void __init setup_arch(char **cmdline_p)
 	init_mm.end_data   = (unsigned long) _edata;
 	init_mm.brk	   = (unsigned long) _end;
 
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	*mm_mm_rb_lock(&init_mm) = __RW_LOCK_UNLOCKED(init_mm.mm_rb_lock);
+#endif
 	*cmdline_p = boot_command_line;
 
 	early_fixmap_init();

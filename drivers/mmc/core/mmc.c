@@ -26,6 +26,12 @@
 #include "sd_ops.h"
 #include "pwrseq.h"
 
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+#include <linux/metricslog.h>
+#define LMK_METRIC_TAG "kernel"
+#define METRICS_data_LEN 128
+#endif /* #if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG) */
+
 #define DEFAULT_CMD6_TIMEOUT_MS	500
 #define MIN_CACHE_EN_TIMEOUT_MS 1600
 
@@ -297,7 +303,7 @@ static void mmc_manage_enhanced_area(struct mmc_card *card, u8 *ext_csd)
 	}
 }
 
-static void mmc_part_add(struct mmc_card *card, u64 size,
+static void mmc_part_add(struct mmc_card *card, unsigned int size,
 			 unsigned int part_cfg, char *name, int idx, bool ro,
 			 int area_type)
 {
@@ -313,7 +319,7 @@ static void mmc_manage_gp_partitions(struct mmc_card *card, u8 *ext_csd)
 {
 	int idx;
 	u8 hc_erase_grp_sz, hc_wp_grp_sz;
-	u64 part_size;
+	unsigned int part_size;
 
 	/*
 	 * General purpose partition feature support --
@@ -343,7 +349,8 @@ static void mmc_manage_gp_partitions(struct mmc_card *card, u8 *ext_csd)
 				(ext_csd[EXT_CSD_GP_SIZE_MULT + idx * 3 + 1]
 				<< 8) +
 				ext_csd[EXT_CSD_GP_SIZE_MULT + idx * 3];
-			part_size *= (hc_erase_grp_sz * hc_wp_grp_sz);
+			part_size *= (size_t)(hc_erase_grp_sz *
+				hc_wp_grp_sz);
 			mmc_part_add(card, part_size << 19,
 				EXT_CSD_PART_CONFIG_ACC_GP0 + idx,
 				"gp%d", idx, false,
@@ -361,7 +368,7 @@ static void mmc_manage_gp_partitions(struct mmc_card *card, u8 *ext_csd)
 static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 {
 	int err = 0, idx;
-	u64 part_size;
+	unsigned int part_size;
 	struct device_node *np;
 	bool broken_hpi = false;
 
@@ -647,9 +654,6 @@ static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 				 mmc_hostname(card->host),
 				 card->ext_csd.cmdq_depth);
 		}
-		card->ext_csd.enhanced_rpmb_supported =
-					(card->ext_csd.rel_param &
-					 EXT_CSD_WR_REL_PARAM_EN_RPMB_REL_WR);
 	}
 out:
 	return err;
@@ -789,12 +793,14 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 		card->ext_csd.enhanced_area_offset);
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
-MMC_DEV_ATTR(enhanced_rpmb_supported, "%#x\n",
-	card->ext_csd.enhanced_rpmb_supported);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
 MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
 MMC_DEV_ATTR(rca, "0x%04x\n", card->rca);
 MMC_DEV_ATTR(cmdq_en, "%d\n", card->ext_csd.cmdq_en);
+MMC_DEV_ATTR(dev_lifetime_est_typ_a, "0x%02x\n",
+		card->ext_csd.device_life_time_est_typ_a);
+MMC_DEV_ATTR(dev_lifetime_est_typ_b, "0x%02x\n",
+		card->ext_csd.device_life_time_est_typ_b);
 
 static ssize_t mmc_fwrev_show(struct device *dev,
 			      struct device_attribute *attr,
@@ -848,12 +854,13 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_enhanced_area_offset.attr,
 	&dev_attr_enhanced_area_size.attr,
 	&dev_attr_raw_rpmb_size_mult.attr,
-	&dev_attr_enhanced_rpmb_supported.attr,
 	&dev_attr_rel_sectors.attr,
 	&dev_attr_ocr.attr,
 	&dev_attr_rca.attr,
 	&dev_attr_dsr.attr,
 	&dev_attr_cmdq_en.attr,
+	&dev_attr_dev_lifetime_est_typ_a.attr,
+	&dev_attr_dev_lifetime_est_typ_b.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(mmc_std);
@@ -1214,6 +1221,14 @@ static int mmc_select_hs400(struct mmc_card *card)
 	mmc_set_timing(host, MMC_TIMING_MMC_HS400);
 	mmc_set_bus_speed(card);
 
+	if (host->ops->execute_hs400_tuning) {
+		mmc_retune_disable(host);
+		err = host->ops->execute_hs400_tuning(host, card);
+		mmc_retune_enable(host);
+		if (err)
+			goto out_err;
+	}
+
 	if (host->ops->hs400_complete)
 		host->ops->hs400_complete(host);
 
@@ -1544,6 +1559,50 @@ static int mmc_hs200_tuning(struct mmc_card *card)
 	return mmc_execute_tuning(card);
 }
 
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+static int emmcmetrics_read(struct mmc_host *host)
+{
+	char logcat_emmc_data[METRICS_data_LEN];
+	struct mmc_card *card = host->card;
+	const struct amazon_logger_ops *logger;
+
+	logger = amazon_logger_ops_get();
+	if(logger != NULL) {
+		snprintf(logcat_emmc_data, METRICS_data_LEN,
+						"emmc:def:life_a=%d;CT;1,life_b=%d;CT;1:NR",
+						card->ext_csd.device_life_time_est_typ_a,
+						card->ext_csd.device_life_time_est_typ_b);
+		logger->log_to_metrics(ANDROID_LOG_INFO, LMK_METRIC_TAG,
+							logcat_emmc_data);
+		logger->log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
+						"EMMC", "life_a", (u32)card->ext_csd.device_life_time_est_typ_a,
+						"count", NULL, VITALS_NORMAL);
+		logger->log_counter_to_vitals(ANDROID_LOG_INFO, "Kernel", "Kernel",
+						"EMMC", "life_b", (u32)card->ext_csd.device_life_time_est_typ_b,
+						"count", NULL, VITALS_NORMAL);
+	}
+
+	return 0;
+}
+
+/*
+ * Internal work. Work to output metrics at some later point.
+ */
+void mmc_host_metrics_work(struct work_struct *work)
+{
+	struct mmc_host *host = container_of(work, struct mmc_host,
+						metrics_delay_work.work);
+	emmcmetrics_read(host);
+}
+
+static void metrics_delaywork_queue(struct mmc_host *host)
+{
+	/* delay 60 seconds to output metrics */
+	queue_delayed_work(system_wq, &host->metrics_delay_work,
+				msecs_to_jiffies(60000));
+}
+#endif /* #if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG) */
+
 /*
  * Handle the detection and initialisation of a card.
  *
@@ -1686,7 +1745,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		/* Erase size depends on CSD and Extended CSD */
 		mmc_set_erase_size(card);
 	}
-
+#if 0
 	/* Enable ERASE_GRP_DEF. This bit is lost after a reset or power off. */
 	if (card->ext_csd.rev >= 3) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
@@ -1715,7 +1774,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			mmc_set_erase_size(card);
 		}
 	}
-
+#endif
 	/*
 	 * Ensure eMMC user default partition is enabled
 	 */
@@ -1943,7 +2002,7 @@ static int mmc_sleep(struct mmc_host *host)
 	 * others) is invalid while the card sleeps.
 	 */
 	if (!cmd.busy_timeout || !(host->caps & MMC_CAP_WAIT_WHILE_BUSY))
-		mmc_delay(timeout_ms);
+		mmc_poll_for_busy(card, timeout_ms, false, false);
 
 out_release:
 	mmc_retune_release(host);
@@ -2249,6 +2308,10 @@ int mmc_attach_mmc(struct mmc_host *host)
 	err = mmc_init_card(host, rocr, NULL);
 	if (err)
 		goto err;
+
+#if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG)
+	metrics_delaywork_queue(host);
+#endif /* #if IS_ENABLED(CONFIG_AMAZON_METRICS_LOG) */
 
 	mmc_release_host(host);
 	err = mmc_add_card(host->card);

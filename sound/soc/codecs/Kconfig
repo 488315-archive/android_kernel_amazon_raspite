@@ -113,6 +113,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_MAX98926 if I2C
 	select SND_SOC_MAX98927 if I2C
 	select SND_SOC_MAX98373 if I2C
+	select SND_SOC_MAX98396 if I2C
 	select SND_SOC_MAX9850 if I2C
 	select SND_SOC_MAX9860 if I2C
 	select SND_SOC_MAX9759
@@ -121,7 +122,12 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_MC13783 if MFD_MC13XXX
 	select SND_SOC_ML26124 if I2C
 	select SND_SOC_MT6351 if MTK_PMIC_WRAP
+	select SND_SOC_MT6357 if MTK_PMIC_WRAP
 	select SND_SOC_MT6358 if MTK_PMIC_WRAP
+	select SND_SOC_MT6359
+	select SND_SOC_MT6359P
+	select SND_SOC_MT6366
+	select SND_SOC_MT6660 if I2C
 	select SND_SOC_NAU8540 if I2C
 	select SND_SOC_NAU8810 if I2C
 	select SND_SOC_NAU8822 if I2C
@@ -184,7 +190,9 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TAS5720 if I2C
 	select SND_SOC_TAS6424 if I2C
 	select SND_SOC_TDA7419 if I2C
+	select SND_SOC_TFA9874 if I2C
 	select SND_SOC_TFA9879 if I2C
+	select SND_SOC_TLV320ADC5140 if I2C
 	select SND_SOC_TLV320AIC23_I2C if I2C
 	select SND_SOC_TLV320AIC23_SPI if SPI_MASTER
 	select SND_SOC_TLV320AIC26 if SPI_MASTER
@@ -756,6 +764,9 @@ config SND_SOC_MAX98357A
 	tristate "Maxim MAX98357A CODEC"
 	depends on GPIOLIB
 
+config SND_SOC_MAX98396
+       tristate
+
 config SND_SOC_MAX98371
        tristate
 
@@ -1134,9 +1145,27 @@ config SND_SOC_TDA7419
 	depends on I2C
 	select REGMAP_I2C
 
+config SND_SOC_TFA9874
+	tristate "NXP TFA9874 speaker amplifier"
+	depends on I2C
+	help
+	  Config of TFA9874. It is a Smart power
+	  amplifier which contain speaker protection,
+	  multi-band DRC, equalizer function. It would
+	  be set to yes if device with TFA9874 on it.
+
 config SND_SOC_TFA9879
 	tristate "NXP Semiconductors TFA9879 amplifier"
 	depends on I2C
+
+config SND_SOC_TLV320ADC5140
+	tristate "Texas Instruments TLV320ADC5140 audio ADC - I2C"
+	depends on I2C
+        help
+	  This adds support for codec driver of Texas Instruments TLV320ADC5140.
+          TLV320ADC5140 is an audio ADC.
+	  Select Y if you have such device.
+	  If unsure select "N".
 
 config SND_SOC_TLV320AIC23
 	tristate
@@ -1459,11 +1488,85 @@ config SND_SOC_ML26124
 config SND_SOC_MT6351
 	tristate "MediaTek MT6351 Codec"
 
+config SND_SOC_MT6357
+	tristate "MediaTek MT6357 Codec"
+	help
+	  Enable support for the platform which uses MT6357 as
+	  external codec device. MediaTek MT6357 is a codec which
+	  contain two ADC for uplink path, and two DAC for
+	  downlink path(headset, lineout).
+
 config SND_SOC_MT6358
 	tristate "MediaTek MT6358 Codec"
 	help
 	  Enable support for the platform which uses MT6358 as
 	  external codec device.
+
+config SND_SOC_MT6359
+	tristate "MediaTek MT6359 Codec driver"
+	help
+	  MediaTek MT6359 is a codec which contain
+	  three ADC for uplink path(MICs), and
+	  three DAC for downlink path(handset,
+	  headset, lineout).
+
+config SND_SOC_MT6359P
+	tristate "MediaTek MT6359P Codec driver"
+	help
+	  MediaTek MT6359P is a codec which contain
+	  three ADC for uplink path(MICs), and
+	  three DAC for downlink path(handset,
+	  headset, lineout).
+
+config SND_SOC_MT6357_ACCDET
+	tristate "MediaTek MT6357 ACCDET driver"
+	help
+	  ACCDET means Accessory Detection technology, MediaTek develop it
+	  for ASoC codec soc-jack detection mechanism.
+	  Select N if you don't have jack on board.
+
+config ACCDET_OMTP_CTIA_SWITCH_MANUAL
+	bool "MediaTek ACCDET driver"
+	default n
+	help
+	  Switch IC - SD80 or FSA3157 - support for MediaTek SOC
+	  If you want to use MediaTek ACCDET PIN SWAP,
+	  say Y or N here.
+	  If unsure, say N.
+
+config SND_SOC_MT6358_ACCDET
+	tristate "MediaTek MT6358 ACCDET driver"
+	help
+	  ACCDET means Accessory Detection technology, MediaTek develop it
+	  for ASoC codec soc-jack detection mechanism.
+	  Select N if you don't have jack on board.
+
+config SND_SOC_MT6359P_ACCDET
+	tristate "MediaTek MT6359 ACCDET driver"
+	help
+	  ACCDET means Accessory Detection technology, MediaTek develop it
+	  for ASoC codec soc-jack detection mechanism.
+	  Select N if you don't have jack on board.
+
+config SND_SOC_MT6366
+	tristate "MediaTek MT6366 Codec driver"
+	help
+	  MediaTek MT6366 is a codec which contain
+	  three ADC for uplink path(MICs), and
+	  three DAC for downlink path(handset,
+	  headset, lineout).
+
+config SND_SOC_MT6660
+	tristate "Mediatek MT6660 speaker amplifier"
+	depends on I2C
+	select CRC32
+	select CRYPTO_SHA256
+	select CRYPTO_RSA
+	help
+	  MediaTek MT6660 is a smart power amplifier which contain
+	  speaker protection, multi-band DRC, equalizer functions.
+	  Select N if you don't have MT6660 on board.
+	  Select M to build this as module.
 
 config SND_SOC_NAU8540
        tristate "Nuvoton Technology Corporation NAU85L40 CODEC"
@@ -1487,5 +1590,7 @@ config SND_SOC_NAU8825
 config SND_SOC_TPA6130A2
 	tristate "Texas Instruments TPA6130A2 headphone amplifier"
 	depends on I2C
+
+source "sound/soc/codecs/dbmdx/Kconfig"
 
 endmenu

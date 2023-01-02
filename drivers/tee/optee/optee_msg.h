@@ -419,4 +419,14 @@ struct optee_msg_arg {
  */
 #define OPTEE_MSG_RPC_CMD_SHM_FREE	7
 
+/*
+ * Clock control
+ */
+#define OPTEE_MSG_RPC_CMD_KREE_CLK_CTRL	12
+
+/*
+ * Flush log to kree console
+ */
+#define OPTEE_MSG_RPC_CMD_KREE_CONSOLE_FLUSH	11
+
 #endif /* _OPTEE_MSG_H */
